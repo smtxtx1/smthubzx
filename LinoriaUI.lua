@@ -3613,6 +3613,7 @@ end;
 
 Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
-
+                Cursor:Remove();
+                CursorOutline:Remove();
 getgenv().Library = Library
 return Library
