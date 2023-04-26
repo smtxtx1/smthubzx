@@ -164,7 +164,7 @@ end;
 function Library:MakeDraggable(Instance, Cutoff)
     Instance.Active = true;
 
-    Instance.InputBegan:Connect(function(Input)
+   Instance.InputBegan:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 then
             local ObjPos = Vector2.new(
                 Mouse.X - Instance.AbsolutePosition.X,
@@ -514,6 +514,24 @@ do
             Parent = SatVibMapInner;
         });
 
+        local CursorOuter = Library:Create('ImageLabel', {
+            AnchorPoint = Vector2.new(0.5, 0.5);
+            Size = UDim2.new(0, 6, 0, 6);
+            BackgroundTransparency = 1;
+            Image = 'http://www.roblox.com/asset/?id=9619665977';
+            ImageColor3 = Color3.new(0, 0, 0);
+            ZIndex = 19;
+            Parent = SatVibMap;
+        });
+
+        local CursorInner = Library:Create('ImageLabel', {
+            Size = UDim2.new(0, CursorOuter.Size.X.Offset - 2, 0, CursorOuter.Size.Y.Offset - 2);
+            Position = UDim2.new(0, 1, 0, 1);
+            BackgroundTransparency = 1;
+            Image = 'http://www.roblox.com/asset/?id=9619665977';
+            ZIndex = 20;
+            Parent = CursorOuter;
+        })
 
         local HueSelectorOuter = Library:Create('Frame', {
             BorderColor3 = Color3.new(0, 0, 0);
@@ -531,14 +549,8 @@ do
             Parent = HueSelectorOuter;
         });
 
-        local HueCursor = Library:Create('Frame', { 
-            BackgroundColor3 = Color3.new(1, 1, 1);
-            AnchorPoint = Vector2.new(0, 0.5);
-            BorderColor3 = Color3.new(0, 0, 0);
-            Size = UDim2.new(1, 0, 0, 1);
-            ZIndex = 18;
-            Parent = HueSelectorInner;
-        });
+        local HueTextSize = Library:GetTextBounds('Hex color', Library.Font, 16) + 3
+        local RgbTextSize = Library:GetTextBounds('255, 255, 255', Library.Font, 16) + 3
 
         local HueBoxOuter = Library:Create('Frame', {
             BorderColor3 = Color3.new(0, 0, 0);
@@ -596,7 +608,7 @@ do
             TextColor3 = Library.FontColor
         });
 
-        local TransparencyBoxOuter, TransparencyBoxInner, TransparencyCursor;
+        local TransparencyBoxOuter, TransparencyBoxInner;
         
         if Info.Transparency then 
             TransparencyBoxOuter = Library:Create('Frame', {
@@ -623,15 +635,6 @@ do
                 Size = UDim2.new(1, 0, 1, 0);
                 Image = 'http://www.roblox.com/asset/?id=12978095818';
                 ZIndex = 20;
-                Parent = TransparencyBoxInner;
-            });
-
-            TransparencyCursor = Library:Create('Frame', { 
-                BackgroundColor3 = Color3.new(1, 1, 1);
-                AnchorPoint = Vector2.new(0.5, 0);
-                BorderColor3 = Color3.new(0, 0, 0);
-                Size = UDim2.new(0, 1, 1, 0);
-                ZIndex = 21;
                 Parent = TransparencyBoxInner;
             });
         end;
@@ -830,11 +833,9 @@ do
 
             if TransparencyBoxInner then
                 TransparencyBoxInner.BackgroundColor3 = ColorPicker.Value;
-                TransparencyCursor.Position = UDim2.new(1 - ColorPicker.Transparency, 0, 0, 0);
             end;
 
             CursorOuter.Position = UDim2.new(ColorPicker.Sat, 0, 1 - ColorPicker.Vib, 0);
-            HueCursor.Position = UDim2.new(0, 0, ColorPicker.Hue, 0);
 
             HueBox.Text = '#' .. ColorPicker.Value:ToHex()
             RgbBox.Text = table.concat({ math.floor(ColorPicker.Value.R * 255), math.floor(ColorPicker.Value.G * 255), math.floor(ColorPicker.Value.B * 255) }, ', ')
@@ -1343,6 +1344,7 @@ do
             TextSize = 14;
             Text = Text;
             TextWrapped = DoesWrap or false,
+            RichText = true,
             TextXAlignment = Enum.TextXAlignment.Left;
             ZIndex = 5;
             Parent = Container;
@@ -2250,23 +2252,12 @@ do
         local ListOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
+            Position = UDim2.new(0, 4, 0, 20 + RelativeOffset + 1 + 20);
+            Size = UDim2.new(1, -8, 0, MAX_DROPDOWN_ITEMS * 20 + 2);
             ZIndex = 20;
             Visible = false;
-            Parent = ScreenGui;
+            Parent = Container.Parent;
         });
-
-        local function RecalculateListPosition()
-            ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1);
-        end;
-
-        local function RecalculateListSize(YSize)
-            ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
-        end;
-
-        RecalculateListPosition();
-        RecalculateListSize();
-
-        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
 
         local ListInner = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
@@ -2342,12 +2333,13 @@ do
             end;
         end;
 
-        function Dropdown:BuildDropdownList()
+        function Dropdown:SetValues()
             local Values = Dropdown.Values;
             local Buttons = {};
 
             for _, Element in next, Scrolling:GetChildren() do
                 if not Element:IsA('UIListLayout') then
+                    -- Library:RemoveFromRegistry(Element);
                     Element:Destroy();
                 end;
             end;
@@ -2454,18 +2446,11 @@ do
                 Buttons[Button] = Table;
             end;
 
-            Scrolling.CanvasSize = UDim2.fromOffset(0, (Count * 20) + 1);
-
             local Y = math.clamp(Count * 20, 0, MAX_DROPDOWN_ITEMS * 20) + 1;
-            RecalculateListSize(Y);
-        end;
+            ListOuter.Size = UDim2.new(1, -8, 0, Y);
+            Scrolling.CanvasSize = UDim2.new(0, 0, 0, (Count * 20) + 1);
 
-        function Dropdown:SetValues(NewValues)
-            if NewValues then
-                Dropdown.Values = NewValues;
-            end;
-
-            Dropdown:BuildDropdownList();
+            -- ListOuter.Size = UDim2.new(1, -8, 0, (#Values * 20) + 2);
         end;
 
         function Dropdown:OpenDropdown()
@@ -2504,7 +2489,7 @@ do
                 end;
             end;
 
-            Dropdown:BuildDropdownList();
+            Dropdown:SetValues();
 
             Library:SafeCallback(Dropdown.Callback, Dropdown.Value);
             Library:SafeCallback(Dropdown.Changed, Dropdown.Value);
@@ -2532,7 +2517,7 @@ do
             end;
         end);
 
-        Dropdown:BuildDropdownList();
+        Dropdown:SetValues();
         Dropdown:Display();
 
         local Defaults = {}
@@ -2565,7 +2550,7 @@ do
                 if (not Info.Multi) then break end
             end
 
-            Dropdown:BuildDropdownList();
+            Dropdown:SetValues();
             Dropdown:Display();
         end
 
@@ -3029,7 +3014,6 @@ function Library:CreateWindow(...)
         ZIndex = 2;
         Parent = MainSectionInner;
     });
-    
 
     Library:AddToRegistry(TabContainer, {
         BackgroundColor3 = 'MainColor';
@@ -3501,7 +3485,7 @@ function Library:CreateWindow(...)
 
         if Toggled then
             -- A bit scuffed, but if we're going from not toggled -> toggled we want to show the frame immediately so that the fade is visible.
-            Outer.Visible = false;
+            Outer.Visible = true;
 
             task.spawn(function()
                 -- TODO: add cursor fade?
@@ -3553,8 +3537,6 @@ function Library:CreateWindow(...)
                 table.insert(Properties, 'TextTransparency');
             elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
                 table.insert(Properties, 'BackgroundTransparency');
-            elseif Desc:IsA('UIStroke') then
-                table.insert(Properties, 'Transparency');
             end;
 
             local Cache = TransparencyCache[Desc];
@@ -3606,14 +3588,14 @@ local function OnPlayerChange()
 
     for _, Value in next, Options do
         if Value.Type == 'Dropdown' and Value.SpecialType == 'Player' then
-            Value:SetValues(PlayerList);
+            Value.Values = PlayerList;
+            Value:SetValues();
         end;
     end;
 end;
 
 Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
-                Cursor:Remove();
-                CursorOutline:Remove();
+
 getgenv().Library = Library
 return Library
